@@ -1,0 +1,680 @@
+
+let tela = "inicio";
+let quantidadeJogadores = 2;
+let jogadores = [];
+let jogadorAtual = 0;
+let casas = [];
+let botoes = [];
+let dado = 1;
+let mensagem = "Bem-vindo ao Império Empresarial!";
+let acaoPendente = null;
+let historico = [];
+let rodadas = 3;
+let jogoFinalizado = false;
+
+const cores = [
+  [255, 85, 85],
+  [65, 160, 255],
+  [255, 195, 55],
+  [100, 220, 145],
+  [190, 120, 255],
+  [255, 135, 195]
+];
+
+const nomes = [
+  "Vermelho", "Azul", "Amarelo",
+  "Verde", "Roxo", "Rosa"
+];
+
+function setup() {
+  createCanvas(1000, 760);
+  textFont("Arial");
+  textAlign(CENTER, CENTER);
+  criarTabuleiro();
+}
+
+function criarTabuleiro() {
+  casas = [
+    {tipo:"inicio", nome:"INÍCIO"},
+    {tipo:"evento", nome:"SORTE"},
+    {tipo:"empresa", nome:"PADARIA", preco:2000, aluguel:400},
+    {tipo:"evento", nome:"EVENTO"},
+    {tipo:"empresa", nome:"MERCADO", preco:3000, aluguel:600},
+    {tipo:"imposto", nome:"IMPOSTO"},
+    {tipo:"investir", nome:"INVESTIR"},
+    {tipo:"empresa", nome:"RESTAURANTE", preco:4000, aluguel:800},
+    {tipo:"bonus", nome:"BÔNUS"},
+    {tipo:"empresa", nome:"LOJA", preco:2500, aluguel:500},
+    {tipo:"evento", nome:"SORTE"},
+    {tipo:"descanso", nome:"PAUSA"},
+    {tipo:"empresa", nome:"FÁBRICA", preco:5000, aluguel:1000},
+    {tipo:"imposto", nome:"IMPOSTO"},
+    {tipo:"empresa", nome:"HOTEL", preco:6000, aluguel:1200},
+    {tipo:"investir", nome:"INVESTIR"},
+    {tipo:"evento", nome:"EVENTO"},
+    {tipo:"empresa", nome:"SHOPPING", preco:7000, aluguel:1500},
+    {tipo:"descanso", nome:"PAUSA"},
+    {tipo:"empresa", nome:"TECNOLOGIA", preco:8000, aluguel:1800},
+    {tipo:"bonus", nome:"BÔNUS"},
+    {tipo:"investir", nome:"INVESTIR"},
+    {tipo:"evento", nome:"SORTE"},
+    {tipo:"descanso", nome:"PAUSA"}
+  ];
+
+  for (let c of casas) {
+    c.dono = -1;
+  }
+}
+
+function iniciarJogo() {
+  jogadores = [];
+
+  for (let i = 0; i < quantidadeJogadores; i++) {
+    jogadores.push({
+      nome: "Jogador " + (i + 1),
+      cor: cores[i],
+      dinheiro: 10000,
+      posicao: 0,
+      voltas: 0,
+      investimentos: 0,
+      ativo: true
+    });
+  }
+
+  jogadorAtual = 0;
+  dado = 1;
+  acaoPendente = null;
+  historico = [];
+  jogoFinalizado = false;
+  mensagem = "O jogo começou! Boa sorte!";
+  tela = "jogo";
+}
+
+function draw() {
+  background(22, 31, 48);
+  botoes = [];
+
+  if (tela === "inicio") {
+    desenharInicio();
+  } else if (tela === "jogo") {
+    desenharJogo();
+  } else if (tela === "final") {
+    desenharFinal();
+  }
+}
+
+// ===============================
+// TELA INICIAL
+// ===============================
+
+function desenharInicio() {
+  fill(255);
+  textSize(42);
+  text("IMPÉRIO EMPRESARIAL", width / 2, 110);
+
+  fill(100, 220, 160);
+  textSize(20);
+  text("Construa seu império e torne-se o maior empresário!",
+       width / 2, 170);
+
+  fill(230);
+  textSize(19);
+  text("ESCOLHA A QUANTIDADE DE JOGADORES",
+       width / 2, 290);
+
+  for (let i = 2; i <= 6; i++) {
+    let x = 185 + (i - 2) * 130;
+
+    criarBotao(
+      String(i),
+      x, 350, 95, 75,
+      () => quantidadeJogadores = i,
+      quantidadeJogadores === i
+    );
+  }
+
+  fill(230);
+  textSize(17);
+  text("Cada jogador começa com R$ 10.000",
+       width / 2, 480);
+
+  text("Complete 3 voltas e acumule o maior patrimônio.",
+       width / 2, 515);
+
+  criarBotao("COMEÇAR PARTIDA",
+    350, 570, 300, 75, iniciarJogo);
+}
+
+// ===============================
+// TABULEIRO
+// ===============================
+
+function posicaoCasa(i) {
+  let col, row;
+  let x = 25;
+  let y = 75;
+  let tamanho = 75;
+  let espaco = 4;
+
+  if (i <= 6) {
+    col = i;
+    row = 0;
+  } else if (i <= 11) {
+    col = 6;
+    row = i - 6;
+  } else if (i <= 18) {
+    col = 18 - i;
+    row = 6;
+  } else {
+    col = 0;
+    row = 24 - i;
+  }
+
+  return {
+    x: x + col * (tamanho + espaco),
+    y: y + row * (tamanho + espaco),
+    tamanho: tamanho
+  };
+}
+
+function corCasa(tipo) {
+  if (tipo === "inicio") return [70, 190, 120];
+  if (tipo === "empresa") return [65, 110, 180];
+  if (tipo === "imposto") return [210, 80, 80];
+  if (tipo === "bonus") return [220, 170, 50];
+  if (tipo === "investir") return [145, 90, 200];
+  if (tipo === "evento") return [210, 120, 60];
+  return [80, 95, 115];
+}
+
+function desenharTabuleiro() {
+  for (let i = 0; i < casas.length; i++) {
+    let p = posicaoCasa(i);
+    let c = casas[i];
+
+    fill(...corCasa(c.tipo));
+    stroke(255, 100);
+    strokeWeight(1);
+    rect(p.x, p.y, p.tamanho, p.tamanho, 8);
+
+    noStroke();
+    fill(255);
+    textSize(10);
+    text(c.nome, p.x + 37, p.y + 17);
+
+    if (c.tipo === "empresa") {
+      textSize(10);
+      text("R$" + c.preco, p.x + 37, p.y + 37);
+
+      if (c.dono !== -1) {
+        fill(...jogadores[c.dono].cor);
+        circle(p.x + 37, p.y + 60, 15);
+      }
+    }
+
+    if (c.tipo === "inicio") {
+      textSize(10);
+      text("SAÍDA", p.x + 37, p.y + 43);
+    }
+
+    // Peças dos jogadores
+    for (let j = 0; j < jogadores.length; j++) {
+      if (jogadores[j].posicao === i) {
+        let coluna = j % 3;
+        let linha = floor(j / 3);
+
+        let px = p.x + 18 + coluna * 19;
+        let py = p.y + 65 + linha * 12;
+
+        fill(...jogadores[j].cor);
+        stroke(255);
+        strokeWeight(1);
+        circle(px, py, 15);
+        noStroke();
+      }
+    }
+  }
+
+  // Centro do tabuleiro
+  fill(35, 48, 70);
+  rect(110, 170, 335, 315, 15);
+
+  fill(255);
+  textSize(24);
+  text("IMPÉRIO", 277, 225);
+  text("EMPRESARIAL", 277, 260);
+
+  fill(100, 220, 160);
+  textSize(18);
+  text("Construa seu negócio!", 277, 320);
+
+  fill(220);
+  textSize(15);
+  text("Compre empresas", 277, 370);
+  text("Invista e receba aluguéis", 277, 400);
+  text("Acumule seu patrimônio", 277, 430);
+}
+
+// ===============================
+// PAINEL DO JOGO
+// ===============================
+
+function desenharJogo() {
+  desenharTabuleiro();
+
+  fill(255);
+  textAlign(LEFT, CENTER);
+  textSize(23);
+  text("PAINEL DOS EMPRESÁRIOS", 570, 48);
+
+  textAlign(CENTER, CENTER);
+
+  for (let i = 0; i < jogadores.length; i++) {
+    let j = jogadores[i];
+    let x = 575;
+    let y = 85 + i * 75;
+
+    fill(42, 55, 77);
+    rect(x, y, 395, 65, 10);
+
+    fill(...j.cor);
+    circle(x + 25, y + 32, 20);
+
+    fill(255);
+    textAlign(LEFT, CENTER);
+    textSize(14);
+    text(j.nome, x + 48, y + 17);
+
+    textSize(12);
+    text("Caixa: R$ " + j.dinheiro.toLocaleString("pt-BR"),
+         x + 48, y + 42);
+
+    fill(180);
+    textAlign(RIGHT, CENTER);
+    text("Voltas: " + j.voltas + "/3", x + 375, y + 20);
+    text("Patrimônio: R$ " +
+      patrimonio(i).toLocaleString("pt-BR"),
+      x + 375, y + 43);
+
+    textAlign(CENTER, CENTER);
+  }
+
+  let atual = jogadores[jogadorAtual];
+
+  fill(255);
+  textSize(19);
+  text("VEZ DE " + atual.nome.toUpperCase(), 775, 560);
+
+  fill(...atual.cor);
+  circle(775, 595, 25);
+
+  fill(255);
+  textSize(20);
+  text("DADO: " + dado, 775, 630);
+
+  if (!acaoPendente && !jogoFinalizado) {
+    criarBotao("🎲 LANÇAR DADO",
+      640, 660, 270, 65, jogarDado);
+  }
+
+  if (acaoPendente) {
+    desenharAcao();
+  }
+
+  fill(200);
+  textSize(12);
+  text("Cada jogador completa 3 voltas.",
+       775, 735);
+}
+
+// ===============================
+// DADOS E MOVIMENTAÇÃO
+// ===============================
+
+function jogarDado() {
+  if (acaoPendente || jogoFinalizado) return;
+
+  let j = jogadores[jogadorAtual];
+
+  dado = floor(random(1, 7));
+
+  let antiga = j.posicao;
+  let nova = antiga + dado;
+
+  if (nova >= 24) {
+    j.voltas++;
+    j.dinheiro += 1000;
+    mensagem = j.nome + " passou pelo início e recebeu R$ 1.000!";
+  }
+
+  j.posicao = nova % 24;
+
+  resolverCasa();
+}
+
+function resolverCasa() {
+  let j = jogadores[jogadorAtual];
+  let c = casas[j.posicao];
+
+  if (c.tipo === "inicio") {
+    mensagem = "Você chegou ao início!";
+    proximoJogador();
+    return;
+  }
+
+  if (c.tipo === "empresa") {
+    if (c.dono === -1) {
+      mensagem = "Empresa disponível para compra!";
+      acaoPendente = "empresa";
+      return;
+    }
+
+    if (c.dono === jogadorAtual) {
+      mensagem = "Esta empresa já pertence a você!";
+      proximoJogador();
+      return;
+    }
+
+    let aluguel = c.aluguel;
+    let dono = jogadores[c.dono];
+
+    let pagamento = min(j.dinheiro, aluguel);
+    j.dinheiro -= pagamento;
+    dono.dinheiro += pagamento;
+
+    mensagem = j.nome + " pagou R$ " + pagamento +
+      " de aluguel para " + dono.nome + ".";
+
+    proximoJogador();
+    return;
+  }
+
+  if (c.tipo === "imposto") {
+    let imposto = 1000;
+    j.dinheiro -= imposto;
+    mensagem = "Você pagou R$ 1.000 de impostos!";
+    proximoJogador();
+    return;
+  }
+
+  if (c.tipo === "bonus") {
+    let premio = floor(random(500, 2001));
+    j.dinheiro += premio;
+    mensagem = "Parabéns! Você recebeu R$ " + premio + " de bônus!";
+    proximoJogador();
+    return;
+  }
+
+  if (c.tipo === "investir") {
+    mensagem = "Deseja investir no mercado financeiro?";
+    acaoPendente = "investir";
+    return;
+  }
+
+  if (c.tipo === "evento") {
+    eventoAleatorio();
+    proximoJogador();
+    return;
+  }
+
+  if (c.tipo === "descanso") {
+    mensagem = "Dia tranquilo! Nenhuma movimentação financeira.";
+    proximoJogador();
+    return;
+  }
+}
+
+// ===============================
+// EVENTOS ALEATÓRIOS
+// ===============================
+
+function eventoAleatorio() {
+  let j = jogadores[jogadorAtual];
+
+  let eventos = [
+    {texto:"Você conseguiu um grande cliente! +R$ 1.500",
+     dinheiro:1500},
+    {texto:"Seu negócio teve despesas inesperadas! -R$ 1.000",
+     dinheiro:-1000},
+    {texto:"Uma campanha de marketing deu certo! +R$ 2.000",
+     dinheiro:2000},
+    {texto:"Você recebeu um prêmio empresarial! +R$ 800",
+     dinheiro:800},
+    {texto:"Equipamentos precisaram de manutenção! -R$ 700",
+     dinheiro:-700},
+    {texto:"Você fez uma venda especial! +R$ 1.200",
+     dinheiro:1200}
+  ];
+
+  let e = random(eventos);
+  j.dinheiro += e.dinheiro;
+  mensagem = e.texto;
+}
+
+// ===============================
+// AÇÕES DE COMPRA E INVESTIMENTO
+// ===============================
+
+function desenharAcao() {
+  fill(20, 30, 48);
+  rect(570, 520, 410, 215, 12);
+
+  fill(255);
+  textSize(15);
+  text(mensagem, 775, 550, 380, 45);
+
+  if (acaoPendente === "empresa") {
+    let c = casas[jogadores[jogadorAtual].posicao];
+
+    fill(255);
+    textSize(13);
+    text("Preço: R$ " + c.preco +
+      " | Aluguel: R$ " + c.aluguel,
+      775, 590);
+
+    criarBotao("COMPRAR",
+      590, 620, 175, 55, comprarEmpresa);
+
+    criarBotao("PASSAR",
+      780, 620, 175, 55, () => {
+        acaoPendente = null;
+        proximoJogador();
+      });
+  }
+
+  if (acaoPendente === "investir") {
+    fill(255);
+    textSize(13);
+    text("Investimento de R$ 1.000 com retorno de R$ 1.500 no patrimônio.",
+      775, 595, 380, 35);
+
+    criarBotao("INVESTIR",
+      590, 630, 175, 50, investir);
+
+    criarBotao("PASSAR",
+      780, 630, 175, 50, () => {
+        acaoPendente = null;
+        proximoJogador();
+      });
+  }
+}
+
+function comprarEmpresa() {
+  let j = jogadores[jogadorAtual];
+  let c = casas[j.posicao];
+
+  if (j.dinheiro >= c.preco) {
+    j.dinheiro -= c.preco;
+    c.dono = jogadorAtual;
+    mensagem = j.nome + " comprou " + c.nome + "!";
+  } else {
+    mensagem = "Dinheiro insuficiente para comprar esta empresa!";
+  }
+
+  acaoPendente = null;
+  proximoJogador();
+}
+
+function investir() {
+  let j = jogadores[jogadorAtual];
+
+  if (j.dinheiro >= 1000) {
+    j.dinheiro -= 1000;
+    j.investimentos += 1500;
+    mensagem = "Investimento realizado! Patrimônio investido: R$ 1.500.";
+  } else {
+    mensagem = "Dinheiro insuficiente para investir!";
+  }
+
+  acaoPendente = null;
+  proximoJogador();
+}
+
+// ===============================
+// PATRIMÔNIO E VENCEDOR
+// ===============================
+
+function patrimonio(indice) {
+  let j = jogadores[indice];
+  let total = j.dinheiro + j.investimentos;
+
+  for (let c of casas) {
+    if (c.dono === indice) {
+      total += c.preco;
+    }
+  }
+
+  return total;
+}
+
+function proximoJogador() {
+  historico.unshift(mensagem);
+
+  if (historico.length > 4) {
+    historico.pop();
+  }
+
+  if (jogadores.every(j => j.voltas >= rodadas)) {
+    finalizarJogo();
+    return;
+  }
+
+  let tentativas = 0;
+
+  do {
+    jogadorAtual = (jogadorAtual + 1) % jogadores.length;
+    tentativas++;
+  } while (
+    jogadores[jogadorAtual].voltas >= rodadas &&
+    tentativas <= jogadores.length
+  );
+}
+
+function finalizarJogo() {
+  jogoFinalizado = true;
+  tela = "final";
+}
+
+// ===============================
+// TELA FINAL
+// ===============================
+
+function desenharFinal() {
+  fill(255);
+  textSize(38);
+  text("🏆 FIM DO JOGO!", width / 2, 85);
+
+  let ranking = jogadores.slice().sort(
+    (a, b) => patrimonio(jogadores.indexOf(b)) -
+              patrimonio(jogadores.indexOf(a))
+  );
+
+  let vencedor = ranking[0];
+
+  fill(...vencedor.cor);
+  textSize(27);
+  text("CAMPEÃO: " + vencedor.nome.toUpperCase(),
+       width / 2, 155);
+
+  fill(100, 220, 160);
+  textSize(22);
+  text("Patrimônio: R$ " +
+    patrimonio(jogadores.indexOf(vencedor)).toLocaleString("pt-BR"),
+    width / 2, 205);
+
+  fill(255);
+  textSize(20);
+  text("CLASSIFICAÇÃO FINAL", width / 2, 280);
+
+  for (let i = 0; i < ranking.length; i++) {
+    let j = ranking[i];
+    let original = jogadores.indexOf(j);
+
+    fill(40, 55, 78);
+    rect(220, 315 + i * 55, 560, 45, 10);
+
+    fill(...j.cor);
+    circle(250, 337 + i * 55, 20);
+
+    fill(255);
+    textSize(16);
+    textAlign(LEFT, CENTER);
+    text((i + 1) + "º - " + j.nome, 280, 337 + i * 55);
+
+    textAlign(RIGHT, CENTER);
+    text("R$ " + patrimonio(original).toLocaleString("pt-BR"),
+         755, 337 + i * 55);
+
+    textAlign(CENTER, CENTER);
+  }
+
+  criarBotao("JOGAR NOVAMENTE",
+    350, 680, 300, 60, () => {
+      tela = "inicio";
+      criarTabuleiro();
+    });
+}
+
+// ===============================
+// BOTÕES
+// ===============================
+
+function criarBotao(rotulo, x, y, w, h, acao, selecionado = false) {
+  let ativo =
+    mouseX >= x && mouseX <= x + w &&
+    mouseY >= y && mouseY <= y + h;
+
+  if (selecionado) {
+    fill(60, 180, 125);
+  } else if (ativo) {
+    fill(75, 150, 180);
+  } else {
+    fill(48, 105, 125);
+  }
+
+  noStroke();
+  rect(x, y, w, h, 10);
+
+  fill(255);
+  textSize(16);
+  text(rotulo, x + w / 2, y + h / 2);
+
+  botoes.push({x, y, w, h, acao});
+}
+
+function mousePressed() {
+  for (let b of botoes) {
+    if (
+      mouseX >= b.x && mouseX <= b.x + b.w &&
+      mouseY >= b.y && mouseY <= b.y + b.h
+    ) {
+      b.acao();
+      return false;
+    }
+  }
+}
+
+function touchStarted() {
+  mousePressed();
+  return false;
+}
